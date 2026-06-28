@@ -23,6 +23,22 @@ class AdminService {
     ]).map((item) => Report.fromJson(asMap(item))).toList();
   }
 
+  Future<List<Report>> reports() async {
+    try {
+      final data = await _api.get('/admin/reports.php');
+      return unwrapList(data, [
+        'reports',
+        'pending',
+        'approved',
+        'rejected',
+        'items',
+        'data',
+      ]).map((item) => Report.fromJson(asMap(item))).toList();
+    } catch (_) {
+      return pending();
+    }
+  }
+
   Future<void> approve(int adminId, int reportId) => _api.post(
     '/admin/approve.php',
     data: {'admin_id': adminId, 'report_id': reportId},
@@ -46,6 +62,15 @@ class AdminService {
       'user',
       'data',
     ]),
+  );
+  Future<void> updateUser({
+    required int id,
+    required String username,
+    required String email,
+    required String role,
+  }) => _api.post(
+    '/admin/update_user.php',
+    data: {'id': id, 'username': username, 'email': email, 'role': role},
   );
   Future<void> deleteUser(int id) =>
       _api.post('/admin/delete_user.php', data: {'id': id});

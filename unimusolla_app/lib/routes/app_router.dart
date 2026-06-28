@@ -10,8 +10,7 @@ import '../features/auth/register_screen.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/home/user_home_screen.dart';
 import '../features/musolla/musolla_detail_screen.dart';
-import '../features/musolla/search_screen.dart';
-import '../features/profile/edit_profile_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/reports/report_detail_screen.dart';
 import '../features/reports/report_form.dart';
 import '../models/musolla.dart';
@@ -45,7 +44,7 @@ class AppRouter {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/home', builder: (_, __) => const UserHomeScreen()),
-      GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
+      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       GoRoute(
         path: '/musolla/:id',
         builder: (_, state) => MusollaDetailScreen(
@@ -77,10 +76,6 @@ class AppRouter {
             return _MissingPendingReport(id: id);
           return ReportFormScreen(report: report);
         },
-      ),
-      GoRoute(
-        path: '/profile/edit',
-        builder: (_, __) => const EditProfileScreen(),
       ),
       GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
       GoRoute(

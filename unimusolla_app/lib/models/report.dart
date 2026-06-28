@@ -49,8 +49,14 @@ class Report {
     latitude: doubleOf(json['latitude'] ?? json['lat']),
     longitude: doubleOf(json['longitude'] ?? json['lng']),
     adminReview: json['admin_review']?.toString() ?? json['review']?.toString(),
-    images: stringListOf(
-      json['images'] ?? json['gallery'] ?? json['image'],
+    images: imagePathListOf(
+      json['images'] ??
+          json['gallery'] ??
+          json['image_path'] ??
+          json['thumbnail'] ??
+          json['report_image'] ??
+          json['image_url'] ??
+          json['image'],
     ).map(ApiConstants.reportImageUrl).nonNulls.toList(),
   );
 }

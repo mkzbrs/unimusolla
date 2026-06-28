@@ -26,19 +26,26 @@ class ReportService {
   }
 
   Future<int> create(Map<String, dynamic> payload, List<XFile> images) async {
-    final data = asMap(await _api.post('/reports/create.php', data: payload));
-    final reportId = intOf(
-      data['report_id'] ??
-          data['id'] ??
-          unwrapMap(data, ['report', 'data'])['id'],
+    final response = asMap(
+      await _api.post('/reports/create.php', data: payload),
     );
+
+    final body = unwrapMap(response, ['data']);
+    final reportId = intOf(body['report_id'] ?? body['id']);
+
+    if (reportId <= 0) {
+      throw Exception('Backend did not return a valid report_id');
+    }
+
     if (images.isNotEmpty) {
       await _api.upload(
         '/uploads/report.php',
         files: images,
+        field: 'images',
         data: {'report_id': reportId},
       );
     }
+
     return reportId;
   }
 

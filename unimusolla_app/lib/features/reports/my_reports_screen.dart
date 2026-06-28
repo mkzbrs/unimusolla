@@ -14,6 +14,12 @@ class MyReportsScreen extends StatefulWidget {
 }
 
 class _MyReportsScreenState extends State<MyReportsScreen> {
+  static const _surface = Color(0xFFF8F9FF);
+  static const _onSurface = Color(0xFF121C2A);
+  static const _onSurfaceVariant = Color(0xFF3F4944);
+  static const _primary = Color(0xFF004532);
+  static const _outlineVariant = Color(0xFFBEC9C2);
+
   @override
   void initState() {
     super.initState();
@@ -26,11 +32,19 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<ReportProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('My Reports')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/reports/create'),
-        icon: const Icon(Icons.add),
-        label: const Text('Submit'),
+      backgroundColor: _surface,
+      appBar: AppBar(
+        title: Text(
+          'My Reports',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: _primary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        backgroundColor: _surface,
+        surfaceTintColor: _surface,
+        elevation: 1,
+        shadowColor: Colors.black.withValues(alpha: .12),
       ),
       body: RefreshIndicator(
         onRefresh: provider.loadList,
@@ -50,42 +64,158 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   ),
                 ],
               );
-            if (provider.reports.isEmpty)
-              return const EmptyState(
-                icon: Icons.assignment_outlined,
-                title: 'No reports',
-                message: 'Submit a musolla report for admin review.',
+            if (provider.reports.isEmpty) {
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 96),
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 672),
+                      child: _ReportsEmptyState(
+                        onSubmit: () => context.push('/reports/create'),
+                      ),
+                    ),
+                  ),
+                ],
               );
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-              itemCount: provider.reports.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final report = provider.reports[index];
-                return ReportCard(
-                  report: report,
-                  onView: () => context.push('/reports/${report.id}'),
-                  onEdit: report.canEdit
-                      ? () => context.push('/reports/${report.id}/edit')
-                      : null,
-                  onDelete: () => _delete(report.id),
-                );
-              },
+            }
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 96),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 672),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SubmitReportBanner(
+                          onSubmit: () => context.push('/reports/create'),
+                        ),
+                        const SizedBox(height: 16),
+                        for (final report in provider.reports) ...[
+                          ReportCard(
+                            report: report,
+                            onView: () => context.push('/reports/${report.id}'),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         ),
       ),
     );
   }
+}
 
-  Future<void> _delete(int id) async {
-    if (!await confirmAction(
-      context,
-      'Delete report?',
-      'This report will be removed permanently.',
-    ))
-      return;
-    final ok = await context.read<ReportProvider>().delete(id);
-    if (mounted && ok) showAppMessage(context, 'Report deleted');
+class _SubmitReportBanner extends StatelessWidget {
+  const _SubmitReportBanner({required this.onSubmit});
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _MyReportsScreenState._outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.assignment_add,
+              color: _MyReportsScreenState._primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'New report?',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: _MyReportsScreenState._onSurfaceVariant,
+                ),
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: onSubmit,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Submit'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _MyReportsScreenState._primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReportsEmptyState extends StatelessWidget {
+  const _ReportsEmptyState({required this.onSubmit});
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 16),
+      child: Column(
+        children: [
+          Container(
+            width: 152,
+            height: 152,
+            decoration: BoxDecoration(
+              color: _MyReportsScreenState._primary.withValues(alpha: .08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.assignment_outlined,
+              size: 72,
+              color: _MyReportsScreenState._primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No Reports Found',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: _MyReportsScreenState._onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Everything looks quiet. If you notice something that needs our attention at a musolla, let us know.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: _MyReportsScreenState._onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: onSubmit,
+            style: FilledButton.styleFrom(
+              backgroundColor: _MyReportsScreenState._primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Submit New Report'),
+          ),
+        ],
+      ),
+    );
   }
 }

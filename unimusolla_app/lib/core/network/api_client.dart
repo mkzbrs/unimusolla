@@ -69,7 +69,7 @@ class ApiClient {
   Future<dynamic> upload(
     String path, {
     required List<XFile> files,
-    String field = 'images[]',
+    String field = 'images',
     Map<String, dynamic>? data,
   }) async {
     try {
@@ -77,7 +77,7 @@ class ApiClient {
       for (final file in files) {
         form.files.add(
           MapEntry(
-            field,
+            '$field[]',
             await MultipartFile.fromFile(file.path, filename: file.name),
           ),
         );

@@ -31,10 +31,19 @@ class NetworkImageBox extends StatelessWidget {
       height: height,
       fit: BoxFit.cover,
       placeholder: (_, __) => Container(color: Colors.grey.shade200),
-      errorWidget: (_, __, ___) => Container(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        child: const Icon(Icons.image_not_supported_outlined),
-      ),
+      errorWidget: (_, imageUrl, error) {
+        debugPrint('IMAGE ERROR: $imageUrl');
+        debugPrint(error.toString());
+        return Container(
+          width: width,
+          height: height,
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        );
+      },
     );
   }
 }

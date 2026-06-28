@@ -53,3 +53,25 @@ List<String> stringListOf(dynamic value) {
       .where((item) => item.isNotEmpty)
       .toList();
 }
+
+List<String> imagePathListOf(dynamic value) {
+  if (value is List) {
+    return value
+        .map((item) {
+          if (item is Map) {
+            final map = asMap(item);
+            return stringOf(
+              map['image_path'] ??
+                  map['thumbnail'] ??
+                  map['image'] ??
+                  map['image_url'] ??
+                  map['path'],
+            ).trim();
+          }
+          return item.toString().trim();
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+  return stringListOf(value);
+}

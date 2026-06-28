@@ -25,6 +25,8 @@ class AdminProvider extends ChangeNotifier {
       _run(() async => stats = await _service.dashboard());
   Future<void> loadPending() =>
       _run(() async => pendingReports = await _service.pending());
+  Future<void> loadReports() =>
+      _run(() async => pendingReports = await _service.reports());
   Future<void> loadUsers() => _run(() async => users = await _service.users());
   Future<void> loadMusollas() =>
       _run(() async => musollas = await _service.musollas());
@@ -35,7 +37,7 @@ class AdminProvider extends ChangeNotifier {
       final adminId = await _requireAdminId();
       await _service.approve(adminId, id);
     });
-    if (ok) await loadPending();
+    if (ok) await loadReports();
     return ok;
   }
 
@@ -44,12 +46,30 @@ class AdminProvider extends ChangeNotifier {
       final adminId = await _requireAdminId();
       await _service.reject(adminId, id);
     });
-    if (ok) await loadPending();
+    if (ok) await loadReports();
     return ok;
   }
 
   Future<bool> deleteUser(int id) async {
     final ok = await _runBool(() => _service.deleteUser(id));
+    if (ok) await loadUsers();
+    return ok;
+  }
+
+  Future<bool> updateUser({
+    required int id,
+    required String username,
+    required String email,
+    required String role,
+  }) async {
+    final ok = await _runBool(
+      () => _service.updateUser(
+        id: id,
+        username: username,
+        email: email,
+        role: role,
+      ),
+    );
     if (ok) await loadUsers();
     return ok;
   }

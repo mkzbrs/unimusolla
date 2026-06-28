@@ -1,0 +1,46 @@
+Launching lib/main.dart on sdk gphone16k x86 64 in debug mode...
+Error running ADB: ProcessException: Process exited abnormally with exit code -2:
+
+  Command: /Users/mkzbrs/Library/Android/sdk/platform-tools/adb version
+#0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
+#1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
+<asynchronous suspension>
+#2      AndroidDevice._checkForSupportedAdbVersion (package:flutter_tools/src/android/android_device.dart:300:36)
+<asynchronous suspension>
+#3      AndroidDevice._adbIsValid.<anonymous closure> (package:flutter_tools/src/android/android_device.dart:517:12)
+<asynchronous suspension>
+#4      AndroidDevice.startApp (package:flutter_tools/src/android/android_device.dart:533:10)
+<asynchronous suspension>
+#5      FlutterDevice.runHot (package:flutter_tools/src/resident_runner.dart:524:33)
+<asynchronous suspension>
+#6      HotRunner.run.<anonymous closure> (package:flutter_tools/src/run_hot.dart:429:59)
+<asynchronous suspension>
+#7      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+<asynchronous suspension>
+#8      HotRunner.run (package:flutter_tools/src/run_hot.dart:465:34)
+<asynchronous suspension>
+#9      RunCommand.runCommand (package:flutter_tools/src/commands/run.dart:904:26)
+<asynchronous suspension>
+#10     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1590:27)
+<asynchronous suspension>
+#11     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#12     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#13     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:496:9)
+<asynchronous suspension>
+#14     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#15     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+<asynchronous suspension>
+#16     FlutterCommandRunner.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:307:33)
+<asynchronous suspension>
+#17     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+<asynchronous suspension>
+#18     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#19     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>
+
+Error launching application on sdk gphone16k x86 64.
+The Dart compiler exited unexpectedly.

@@ -28,11 +28,16 @@ class Musolla {
   final List<String> images;
 
   factory Musolla.fromJson(Map<String, dynamic> json) {
-    final images = stringListOf(
-      json['images'] ?? json['gallery'],
+    final images = imagePathListOf(
+      json['images'] ?? json['gallery'] ?? json['image_path'],
     ).map(ApiConstants.musollaImageUrl).nonNulls.toList();
     final singleImage = ApiConstants.musollaImageUrl(
-      json['image']?.toString() ?? json['image_url']?.toString(),
+      json['thumbnail']?.toString() ??
+          json['image_path']?.toString() ??
+          json['musolla_image']?.toString() ??
+          json['cover_image']?.toString() ??
+          json['image']?.toString() ??
+          json['image_url']?.toString(),
     );
     return Musolla(
       id: intOf(json['id'] ?? json['musolla_id']),

@@ -14,10 +14,19 @@ class DashboardStats {
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
     usersCount: intOf(json['users_count'] ?? json['users']),
     musollasCount: intOf(json['musollas_count'] ?? json['musollas']),
-    pendingReportsCount: intOf(
-      json['pending_reports_count'] ?? json['pending_reports'],
+    pendingReportsCount: _countOf(
+      json['pending_reports_count'] ??
+          json['pending_reports'] ??
+          json['pending_count'] ??
+          json['reports_pending'] ??
+          json['pendingReportsCount'],
     ),
   );
+}
+
+int _countOf(dynamic value) {
+  if (value is List) return value.length;
+  return intOf(value);
 }
 
 class AdminLog {
