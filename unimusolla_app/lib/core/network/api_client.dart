@@ -71,13 +71,14 @@ class ApiClient {
     required List<XFile> files,
     String field = 'images',
     Map<String, dynamic>? data,
+    bool arrayField = true,
   }) async {
     try {
       final form = FormData.fromMap(data ?? {});
       for (final file in files) {
         form.files.add(
           MapEntry(
-            '$field[]',
+            arrayField ? '$field[]' : field,
             await MultipartFile.fromFile(file.path, filename: file.name),
           ),
         );

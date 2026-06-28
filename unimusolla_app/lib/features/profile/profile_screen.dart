@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -126,8 +129,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final source = await _showImageSourceSheet();
+    if (source == null) return;
+    final picked = await _picker.pickImage(source: source);
     if (picked != null) setState(() => _image = picked);
+  }
+
+  Future<ImageSource?> _showImageSourceSheet() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose From Gallery'),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -257,11 +286,25 @@ class _ProfileHero extends StatelessWidget {
                 ),
               ),
               child: ClipOval(
-                child: NetworkImageBox(
-                  url: user.profileImage,
-                  width: 184,
-                  height: 184,
-                ),
+                child: selectedImage == null
+                    ? NetworkImageBox(
+                        url: user.profileImage,
+                        width: 184,
+                        height: 184,
+                      )
+                    : kIsWeb
+                    ? Image.network(
+                        selectedImage!.path,
+                        width: 184,
+                        height: 184,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.file(
+                        File(selectedImage!.path),
+                        width: 184,
+                        height: 184,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
             if (editing)

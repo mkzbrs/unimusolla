@@ -53,10 +53,18 @@ class Report {
       json['images'] ??
           json['gallery'] ??
           json['image_path'] ??
+          json['image_paths'] ??
+          json['report_image_path'] ??
+          json['report_images'] ??
+          json['report_image_paths'] ??
+          json['photos'] ??
+          json['photo'] ??
           json['thumbnail'] ??
           json['report_image'] ??
           json['image_url'] ??
-          json['image'],
+          json['image'] ??
+          json['file_path'] ??
+          json['picture'],
     ).map(ApiConstants.reportImageUrl).nonNulls.toList(),
   );
 }

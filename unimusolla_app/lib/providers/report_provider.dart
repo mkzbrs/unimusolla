@@ -32,8 +32,11 @@ class ReportProvider extends ChangeNotifier {
     return ok;
   }
 
-  Future<bool> update(Map<String, dynamic> payload) async {
-    final ok = await _runBool(() => _service.update(payload));
+  Future<bool> update(
+    Map<String, dynamic> payload, [
+    List<XFile> images = const [],
+  ]) async {
+    final ok = await _runBool(() => _service.update(payload, images));
     if (ok) await loadList();
     return ok;
   }

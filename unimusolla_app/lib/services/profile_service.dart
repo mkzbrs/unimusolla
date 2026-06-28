@@ -23,6 +23,7 @@ class ProfileService {
         '/uploads/profile.php',
         files: [image],
         field: 'image',
+        arrayField: false,
         data: {'user_id': userId},
       );
     }

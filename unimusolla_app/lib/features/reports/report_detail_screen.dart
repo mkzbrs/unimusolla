@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/report.dart';
+import '../../providers/admin_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../widgets/app_states.dart';
 import '../../widgets/network_image_box.dart';
@@ -32,15 +34,27 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<ReportProvider>().loadDetail(widget.id),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetail());
+  }
+
+  Future<void> _loadDetail() {
+    final isAdmin = context.read<AuthProvider>().isAdmin;
+    if (isAdmin) {
+      return context.read<AdminProvider>().loadReportDetail(widget.id);
+    }
+    return context.read<ReportProvider>().loadDetail(widget.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ReportProvider>();
-    final report = provider.selected;
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
+    final reportProvider = context.watch<ReportProvider>();
+    final adminProvider = context.watch<AdminProvider>();
+    final loading = isAdmin ? adminProvider.loading : reportProvider.loading;
+    final error = isAdmin ? adminProvider.error : reportProvider.error;
+    final report = isAdmin
+        ? adminProvider.selectedReport
+        : reportProvider.selected;
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(
@@ -67,14 +81,11 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       ),
       body: Builder(
         builder: (_) {
-          if (provider.loading && report == null) {
+          if (loading && report == null) {
             return const SkeletonList(itemCount: 3);
           }
-          if (provider.error != null && report == null) {
-            return ErrorState(
-              message: provider.error!,
-              onRetry: () => provider.loadDetail(widget.id),
-            );
+          if (error != null && report == null) {
+            return ErrorState(message: error, onRetry: _loadDetail);
           }
           if (report == null) {
             return const EmptyState(
@@ -83,13 +94,15 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               message: 'This report could not be loaded.',
             );
           }
-          for (final imageUrl in report.images) {
-            debugPrint('REPORT IMAGE URL: $imageUrl');
-          }
           return RefreshIndicator(
-            onRefresh: () => provider.loadDetail(widget.id),
+            onRefresh: _loadDetail,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                24,
+                16,
+                32 + MediaQuery.paddingOf(context).bottom,
+              ),
               children: [
                 Center(child: _StatusPill(status: report.status)),
                 const SizedBox(height: 24),
@@ -115,7 +128,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 const SizedBox(height: 10),
                 _PhotoGrid(images: report.images),
                 const SizedBox(height: 24),
-                _ActionButtons(report: report),
+                _ActionButtons(report: report, isAdmin: isAdmin),
               ],
             ),
           );
@@ -328,12 +341,57 @@ class _PhotoGrid extends StatelessWidget {
 }
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.report});
+  const _ActionButtons({required this.report, required this.isAdmin});
 
   final Report report;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
+    if (isAdmin) {
+      final canReview = report.status.toLowerCase() == 'pending';
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: canReview
+                  ? () async {
+                      final ok = await context.read<AdminProvider>().reject(
+                        report.id,
+                      );
+                      if (!context.mounted || !ok) return;
+                      showAppMessage(context, 'Report rejected');
+                      await context.read<AdminProvider>().loadReportDetail(
+                        report.id,
+                      );
+                    }
+                  : null,
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text('Reject'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: canReview
+                  ? () async {
+                      final ok = await context.read<AdminProvider>().approve(
+                        report.id,
+                      );
+                      if (!context.mounted || !ok) return;
+                      showAppMessage(context, 'Report approved');
+                      await context.read<AdminProvider>().loadReportDetail(
+                        report.id,
+                      );
+                    }
+                  : null,
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Approve'),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       children: [
         SizedBox(

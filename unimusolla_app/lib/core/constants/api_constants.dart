@@ -16,9 +16,19 @@ class ApiConstants {
     if (raw == null || raw.isEmpty) return null;
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
 
-    final filename = raw
+    final normalized = raw
         .replaceFirst(RegExp(r'^/+'), '')
-        .replaceFirst(RegExp(r'^(uploads/)?(profiles|musollas|reports)/'), '');
+        .replaceFirst(RegExp(r'^(api/)?'), '')
+        .replaceFirst(RegExp(r'^(public/)?'), '');
+
+    if (normalized.startsWith('uploads/')) {
+      return '$baseUrl/$normalized';
+    }
+
+    final filename = normalized.replaceFirst(
+      RegExp(r'^(profiles|profile|musollas|musolla|reports|report)/'),
+      '',
+    );
     return '$baseImageUrl/$folder/$filename';
   }
 }

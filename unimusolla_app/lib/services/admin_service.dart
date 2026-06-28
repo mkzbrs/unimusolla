@@ -13,30 +13,23 @@ class AdminService {
     unwrapMap(await _api.get('/admin/dashboard.php'), ['data']),
   );
 
-  Future<List<Report>> pending() async {
-    final data = await _api.get('/admin/pending.php');
+  Future<List<Report>> pending() => reports(status: 'pending');
+
+  Future<List<Report>> reports({String status = 'pending'}) async {
+    final data = await _api.get(
+      '/admin/reports.php',
+      query: {'status': status},
+    );
     return unwrapList(data, [
       'reports',
-      'pending',
       'items',
       'data',
     ]).map((item) => Report.fromJson(asMap(item))).toList();
   }
 
-  Future<List<Report>> reports() async {
-    try {
-      final data = await _api.get('/admin/reports.php');
-      return unwrapList(data, [
-        'reports',
-        'pending',
-        'approved',
-        'rejected',
-        'items',
-        'data',
-      ]).map((item) => Report.fromJson(asMap(item))).toList();
-    } catch (_) {
-      return pending();
-    }
+  Future<Report> reportDetail(int id) async {
+    final data = await _api.get('/admin/report_detail.php', query: {'id': id});
+    return Report.fromJson(unwrapMap(data, ['report', 'data']));
   }
 
   Future<void> approve(int adminId, int reportId) => _api.post(
@@ -76,7 +69,7 @@ class AdminService {
       _api.post('/admin/delete_user.php', data: {'id': id});
 
   Future<List<Musolla>> musollas() async {
-    final data = await _api.get('/admin/musollas.php');
+    final data = await _api.get('/musollas/list.php');
     return unwrapList(data, [
       'musollas',
       'items',

@@ -23,6 +23,9 @@ class User {
     role: stringOf(json['role'], 'user').toLowerCase(),
     profileImage: ApiConstants.profileImageUrl(
       json['profile_image']?.toString() ??
+          json['profile_photo']?.toString() ??
+          json['avatar_url']?.toString() ??
+          json['photo']?.toString() ??
           json['image']?.toString() ??
           json['avatar']?.toString(),
     ),

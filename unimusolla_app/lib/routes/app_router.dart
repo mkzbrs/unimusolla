@@ -88,6 +88,12 @@ class AppRouter {
           initialTab: state.uri.queryParameters['tab'] ?? 'users',
         ),
       ),
+      GoRoute(
+        path: '/admin/musolla/:id',
+        builder: (_, state) => MusollaDetailScreen(
+          id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
     ],
   );
 }

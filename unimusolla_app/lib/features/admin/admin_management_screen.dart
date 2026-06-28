@@ -69,10 +69,13 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     switch (_tabController.index) {
       case 1:
         admin.loadMusollas();
+        break;
       case 2:
         admin.loadLogs();
+        break;
       default:
         admin.loadUsers();
+        break;
     }
   }
 }

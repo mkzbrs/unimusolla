@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/musolla.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/musolla_provider.dart';
 import '../../widgets/app_states.dart';
 import '../../widgets/network_image_box.dart';
@@ -77,6 +78,7 @@ class _MusollaDetailScreenState extends State<MusollaDetailScreen> {
               title: 'Not found',
               message: 'This musolla could not be loaded.',
             );
+          final isAdmin = context.watch<AuthProvider>().isAdmin;
           return RefreshIndicator(
             onRefresh: () => provider.loadDetail(widget.id),
             child: ListView(
@@ -84,7 +86,12 @@ class _MusollaDetailScreenState extends State<MusollaDetailScreen> {
               children: [
                 _Gallery(musolla: musolla),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    24,
+                    16,
+                    32 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1024),
@@ -128,17 +135,22 @@ class _MusollaDetailScreenState extends State<MusollaDetailScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => context.push(
-                                      '/reports/create',
-                                      extra: musolla,
+                                if (!isAdmin) ...[
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => context.push(
+                                        '/reports/create',
+                                        extra: musolla,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.assignment_outlined,
+                                      ),
+                                      label: const Text('Report Update'),
                                     ),
-                                    icon: const Icon(Icons.assignment_outlined),
-                                    label: const Text('Report Update'),
                                   ),
-                                ),
+                                ],
                               ],
                             ),
                           ),

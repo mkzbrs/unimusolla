@@ -9,8 +9,9 @@ import '../../models/user.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/app_states.dart';
+import '../../widgets/network_image_box.dart';
 
-enum _AdminTab { home, reports, users, musollas }
+enum _AdminTab { home, reports, users, musollas, activity }
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -39,7 +40,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   _AdminTab _tab = _AdminTab.home;
   String _reportFilter = 'pending';
-  final List<Report> _reviewedReports = [];
 
   @override
   void initState() {
@@ -192,7 +192,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _AdminTab.home => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _WelcomeBanner(onAddMusolla: () => _selectTab(_AdminTab.musollas)),
+          const _WelcomeBanner(),
           const SizedBox(height: 16),
           GridView.count(
             crossAxisCount: 2,
@@ -222,22 +222,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 logs: provider.logs,
                 onApproved: () => _selectTab(_AdminTab.users),
                 onRejected: () => _selectTab(_AdminTab.users),
-                onAll: () => _selectTab(_AdminTab.users),
+                onAll: () => _selectTab(_AdminTab.activity),
               ),
             ],
           ),
           const SizedBox(height: 16),
           _RecentActivityCard(
             logs: provider.logs,
-            onViewAll: () => _selectTab(_AdminTab.users),
+            onViewAll: () => _selectTab(_AdminTab.activity),
           ),
         ],
       ),
       _AdminTab.reports => _ReportsSection(
-        reports: _mergedReports(provider.pendingReports),
+        reports: provider.pendingReports,
         filter: _reportFilter,
         loading: provider.loading,
-        onFilterChanged: (value) => setState(() => _reportFilter = value),
+        onFilterChanged: _changeReportFilter,
         onApprove: _approveReport,
         onReject: _rejectReport,
         onView: _showReportDetails,
@@ -250,8 +250,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _AdminTab.musollas => _MusollasSection(
         musollas: provider.musollas,
         loading: provider.loading,
-        onEdit: (musolla) => context.push('/musolla/${musolla.id}'),
+        onOpen: (musolla) => context.push('/admin/musolla/${musolla.id}'),
         onDelete: _deleteMusolla,
+      ),
+      _AdminTab.activity => _ActivityLogSection(
+        logs: provider.logs,
+        loading: provider.loading,
       ),
     };
   }
@@ -262,21 +266,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final provider = context.read<AdminProvider>();
     switch (tab) {
       case _AdminTab.reports:
-        provider.loadReports();
+        provider.loadReports(status: _reportFilter);
+        break;
       case _AdminTab.users:
         provider.loadUsers();
+        break;
       case _AdminTab.musollas:
         provider.loadMusollas();
+        break;
+      case _AdminTab.activity:
+        provider.loadLogs();
+        break;
       case _AdminTab.home:
         _loadDashboard();
+        break;
     }
   }
 
   Future<void> _loadDashboard() async {
     final provider = context.read<AdminProvider>();
     await provider.loadDashboard();
-    if (mounted) await provider.loadReports();
+    if (mounted) await provider.loadReports(status: _reportFilter);
     if (mounted) await provider.loadLogs();
+  }
+
+  Future<void> _changeReportFilter(String value) async {
+    setState(() => _reportFilter = value);
+    await context.read<AdminProvider>().loadReports(status: value);
   }
 
   Future<void> _approveReport(Report report) async {
@@ -289,10 +305,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
     final ok = await context.read<AdminProvider>().approve(report.id);
     if (!mounted || !ok) return;
-    setState(() {
-      _rememberReviewedReport(report, 'approved');
-      _reportFilter = 'approved';
-    });
+    await _changeReportFilter('approved');
     showAppMessage(context, 'Report approved');
   }
 
@@ -306,49 +319,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
     final ok = await context.read<AdminProvider>().reject(report.id);
     if (!mounted || !ok) return;
-    setState(() {
-      _rememberReviewedReport(report, 'rejected');
-      _reportFilter = 'rejected';
-    });
+    await _changeReportFilter('rejected');
     showAppMessage(context, 'Report rejected');
   }
 
-  List<Report> _mergedReports(List<Report> reports) {
-    final byId = <int, Report>{
-      for (final report in _reviewedReports) report.id: report,
-    };
-    for (final report in reports) {
-      byId[report.id] = report;
-    }
-    return byId.values.toList();
-  }
-
-  void _rememberReviewedReport(Report report, String status) {
-    _reviewedReports.removeWhere((item) => item.id == report.id);
-    _reviewedReports.add(_reportWithStatus(report, status));
-  }
-
   Future<void> _showReportDetails(Report report) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _ReportDetailsSheet(
-        report: report,
-        onApprove: report.status.toLowerCase() == 'pending'
-            ? () {
-                Navigator.of(sheetContext).pop();
-                _approveReport(report);
-              }
-            : null,
-        onReject: report.status.toLowerCase() == 'pending'
-            ? () {
-                Navigator.of(sheetContext).pop();
-                _rejectReport(report);
-              }
-            : null,
-      ),
-    );
+    await context.push('/reports/${report.id}');
+    if (mounted) {
+      await context.read<AdminProvider>().loadReports(status: _reportFilter);
+    }
   }
 
   Future<void> _deleteUser(User user) async {
@@ -383,9 +362,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 }
 
 class _WelcomeBanner extends StatelessWidget {
-  const _WelcomeBanner({required this.onAddMusolla});
-
-  final VoidCallback onAddMusolla;
+  const _WelcomeBanner();
 
   @override
   Widget build(BuildContext context) {
@@ -437,34 +414,7 @@ class _WelcomeBanner extends StatelessWidget {
                 ),
               ],
             );
-            final button = FilledButton.icon(
-              onPressed: onAddMusolla,
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('New Musolla'),
-              style: FilledButton.styleFrom(
-                backgroundColor: _AdminDashboardScreenState._secondaryContainer,
-                foregroundColor:
-                    _AdminDashboardScreenState._onSecondaryContainer,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            );
-
-            if (compact) {
-              return Column(
-                children: [content, const SizedBox(height: 8), button],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(child: content),
-                const SizedBox(width: 24),
-                button,
-              ],
-            );
+            return Row(children: [Expanded(child: content)]);
           },
         ),
       ),
@@ -838,7 +788,10 @@ class _UsersSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _SectionHeader(title: 'User Management', subtitle: 'Manage registered users.'),
+        const _SectionHeader(
+          title: 'User Management',
+          subtitle: 'Manage registered users.',
+        ),
         if (loading && users.isEmpty)
           const SizedBox(height: 640, child: SkeletonList())
         else if (users.isEmpty)
@@ -870,13 +823,13 @@ class _MusollasSection extends StatelessWidget {
   const _MusollasSection({
     required this.musollas,
     required this.loading,
-    required this.onEdit,
+    required this.onOpen,
     required this.onDelete,
   });
 
   final List<Musolla> musollas;
   final bool loading;
-  final ValueChanged<Musolla> onEdit;
+  final ValueChanged<Musolla> onOpen;
   final ValueChanged<Musolla> onDelete;
 
   @override
@@ -884,7 +837,10 @@ class _MusollasSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _SectionHeader(title: 'Live Musollas', subtitle: 'Manage musollas.'),
+        const _SectionHeader(
+          title: 'Live Musollas',
+          subtitle: 'Manage musollas.',
+        ),
         if (loading && musollas.isEmpty)
           const SizedBox(height: 640, child: SkeletonList())
         else if (musollas.isEmpty)
@@ -911,7 +867,7 @@ class _MusollasSection extends StatelessWidget {
                   final musolla = musollas[index];
                   return _MusollaAdminCard(
                     musolla: musolla,
-                    onEdit: () => onEdit(musolla),
+                    onOpen: () => onOpen(musolla),
                     onDelete: () => onDelete(musolla),
                   );
                 },
@@ -919,6 +875,109 @@ class _MusollasSection extends StatelessWidget {
             },
           ),
       ],
+    );
+  }
+}
+
+class _ActivityLogSection extends StatelessWidget {
+  const _ActivityLogSection({required this.logs, required this.loading});
+
+  final List<AdminLog> logs;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...logs]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionHeader(
+          title: 'Recent Actions',
+          subtitle: 'Chronological admin activity log.',
+        ),
+        if (loading && logs.isEmpty)
+          const SizedBox(height: 640, child: SkeletonList())
+        else if (sorted.isEmpty)
+          const EmptyState(
+            icon: Icons.receipt_long_outlined,
+            title: 'No recent activity',
+            message: 'Admin actions will appear here.',
+          )
+        else
+          _GlassCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [for (final log in sorted) _ActivityLogTile(log: log)],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ActivityLogTile extends StatelessWidget {
+  const _ActivityLogTile({required this.log});
+
+  final AdminLog log;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: _AdminDashboardScreenState._surfaceContainerHigh,
+            child: Icon(
+              _statusFrom(log.action) == 'approved'
+                  ? Icons.check_circle_outline
+                  : _statusFrom(log.action) == 'rejected'
+                  ? Icons.cancel_outlined
+                  : Icons.history,
+              size: 20,
+              color: _AdminDashboardScreenState._primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.action,
+                  style: const TextStyle(
+                    color: _AdminDashboardScreenState._onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (log.description.trim().isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    log.description,
+                    style: const TextStyle(
+                      color: _AdminDashboardScreenState._onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (log.createdAt.trim().isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    log.createdAt,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: _AdminDashboardScreenState._onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1041,10 +1100,9 @@ class _SegmentedFilter extends StatelessWidget {
 }
 
 class _ReportImagePreview extends StatelessWidget {
-  const _ReportImagePreview({required this.report, this.height = 116});
+  const _ReportImagePreview({required this.report});
 
   final Report report;
-  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -1052,190 +1110,9 @@ class _ReportImagePreview extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: SizedBox(
-        height: height,
+        height: 116,
         width: double.infinity,
-        child: image == null
-            ? Container(
-                color: _AdminDashboardScreenState._surfaceContainerHigh,
-                child: const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: _AdminDashboardScreenState._primary,
-                  size: 40,
-                ),
-              )
-            : Image.network(
-                image,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: _AdminDashboardScreenState._surfaceContainerHigh,
-                  child: const Icon(
-                    Icons.broken_image_outlined,
-                    color: _AdminDashboardScreenState._primary,
-                    size: 40,
-                  ),
-                ),
-              ),
-      ),
-    );
-  }
-}
-
-class _ReportDetailsSheet extends StatelessWidget {
-  const _ReportDetailsSheet({
-    required this.report,
-    required this.onApprove,
-    required this.onReject,
-  });
-
-  final Report report;
-  final VoidCallback? onApprove;
-  final VoidCallback? onReject;
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: .82,
-      minChildSize: .45,
-      maxChildSize: .94,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: _AdminDashboardScreenState._outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              _ReportImagePreview(report: report, height: 210),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(child: _Badge(label: report.name)),
-                  const SizedBox(width: 10),
-                  _StatusPill(status: report.status),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                report.location.isEmpty ? report.name : report.location,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: _AdminDashboardScreenState._onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _DetailLine(
-                icon: Icons.location_on_outlined,
-                label: 'Exact location',
-                value: report.exactLocation.isEmpty
-                    ? 'No exact location provided.'
-                    : report.exactLocation,
-              ),
-              _DetailLine(
-                icon: Icons.event_available_outlined,
-                label: 'Availability',
-                value: report.available ? 'Available' : 'Unavailable',
-              ),
-              if (report.adminReview?.trim().isNotEmpty == true)
-                _DetailLine(
-                  icon: Icons.rate_review_outlined,
-                  label: 'Admin review',
-                  value: report.adminReview!.trim(),
-                ),
-              const SizedBox(height: 18),
-              if (onApprove != null && onReject != null)
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: onApprove,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _AdminDashboardScreenState._primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Approve'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onReject,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Reject'),
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: _AdminDashboardScreenState._onSurfaceVariant,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: _AdminDashboardScreenState._onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: _AdminDashboardScreenState._onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        child: NetworkImageBox(url: image, width: double.infinity, height: 116),
       ),
     );
   }
@@ -1320,10 +1197,7 @@ class _ReportAdminCard extends StatelessWidget {
 }
 
 class _UserAdminRow extends StatelessWidget {
-  const _UserAdminRow({
-    required this.user,
-    required this.onDelete,
-  });
+  const _UserAdminRow({required this.user, required this.onDelete});
 
   final User user;
   final VoidCallback onDelete;
@@ -1439,32 +1313,15 @@ class _UserAdminRow extends StatelessWidget {
   }
 }
 
-Report _reportWithStatus(Report report, String status) {
-  return Report(
-    id: report.id,
-    name: report.name,
-    location: report.location,
-    exactLocation: report.exactLocation,
-    status: status,
-    available: report.available,
-    facilities: report.facilities,
-    latitude: report.latitude,
-    longitude: report.longitude,
-    adminReview: report.adminReview,
-    musollaId: report.musollaId,
-    images: report.images,
-  );
-}
-
 class _MusollaAdminCard extends StatelessWidget {
   const _MusollaAdminCard({
     required this.musolla,
-    required this.onEdit,
+    required this.onOpen,
     required this.onDelete,
   });
 
   final Musolla musolla;
-  final VoidCallback onEdit;
+  final VoidCallback onOpen;
   final VoidCallback onDelete;
 
   @override
@@ -1473,7 +1330,7 @@ class _MusollaAdminCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: onEdit,
+        onTap: onOpen,
         borderRadius: BorderRadius.circular(12),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -1500,25 +1357,11 @@ class _MusollaAdminCard extends StatelessWidget {
                 child: SizedBox(
                   width: 132,
                   height: double.infinity,
-                  child: musolla.imageUrl == null
-                      ? Container(
-                          color:
-                              _AdminDashboardScreenState._surfaceContainerHigh,
-                          child: const Icon(
-                            Icons.mosque,
-                            color: _AdminDashboardScreenState._primary,
-                            size: 42,
-                          ),
-                        )
-                      : Image.network(
-                          musolla.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: _AdminDashboardScreenState
-                                ._surfaceContainerHigh,
-                            child: const Icon(Icons.mosque_outlined),
-                          ),
-                        ),
+                  child: NetworkImageBox(
+                    url: musolla.imageUrl,
+                    width: 132,
+                    height: double.infinity,
+                  ),
                 ),
               ),
               Expanded(
@@ -1562,11 +1405,6 @@ class _MusollaAdminCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton.icon(
-                            onPressed: onEdit,
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text('Edit'),
-                          ),
                           TextButton.icon(
                             onPressed: onDelete,
                             icon: const Icon(Icons.delete_outline),
@@ -1891,10 +1729,6 @@ class _RecentActivityCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                OutlinedButton(
-                  onPressed: onViewAll,
-                  child: const Text('View logs'),
-                ),
               ],
             ),
           ),
@@ -1919,7 +1753,7 @@ class _RecentActivityCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: onViewAll,
-            child: const Text('View all recent actions'),
+            child: const Text('View All Recent Actions'),
           ),
         ],
       ),

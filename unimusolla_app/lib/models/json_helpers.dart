@@ -62,9 +62,19 @@ List<String> imagePathListOf(dynamic value) {
             final map = asMap(item);
             return stringOf(
               map['image_path'] ??
+                  map['report_image'] ??
+                  map['report_image_path'] ??
+                  map['musolla_image'] ??
+                  map['musolla_image_path'] ??
                   map['thumbnail'] ??
+                  map['filename'] ??
+                  map['file_name'] ??
+                  map['file_path'] ??
+                  map['url'] ??
                   map['image'] ??
                   map['image_url'] ??
+                  map['photo'] ??
+                  map['picture'] ??
                   map['path'],
             ).trim();
           }

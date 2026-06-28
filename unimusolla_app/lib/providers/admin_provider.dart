@@ -15,6 +15,7 @@ class AdminProvider extends ChangeNotifier {
   final SessionStorage _storage;
   DashboardStats? stats;
   List<Report> pendingReports = [];
+  Report? selectedReport;
   List<User> users = [];
   List<Musolla> musollas = [];
   List<AdminLog> logs = [];
@@ -25,8 +26,13 @@ class AdminProvider extends ChangeNotifier {
       _run(() async => stats = await _service.dashboard());
   Future<void> loadPending() =>
       _run(() async => pendingReports = await _service.pending());
-  Future<void> loadReports() =>
-      _run(() async => pendingReports = await _service.reports());
+  Future<void> loadReports({String status = 'pending'}) =>
+      _run(() async => pendingReports = await _service.reports(status: status));
+  Future<void> loadReportDetail(int id) {
+    selectedReport = null;
+    return _run(() async => selectedReport = await _service.reportDetail(id));
+  }
+
   Future<void> loadUsers() => _run(() async => users = await _service.users());
   Future<void> loadMusollas() =>
       _run(() async => musollas = await _service.musollas());

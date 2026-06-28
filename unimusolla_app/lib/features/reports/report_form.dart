@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -120,54 +122,61 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         elevation: 1,
         shadowColor: Colors.black.withValues(alpha: .12),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 768),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formTitle,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            color: _onSurface,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _formSubtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _onSurfaceVariant,
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              24,
+              16,
+              32 + MediaQuery.paddingOf(context).bottom,
+            ),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 768),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formTitle,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: _onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _outlineVariant),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: .05),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _formSubtitle,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: _onSurfaceVariant,
+                        ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!_isEdit) ...[
+                      const SizedBox(height: 24),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _outlineVariant),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .05),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               _SectionHeader(
-                                title: 'Upload Image',
+                                title: _isEdit
+                                    ? 'Add More Images'
+                                    : 'Upload Image',
                                 trailing: 'Optional',
                               ),
                               const SizedBox(height: 16),
@@ -182,126 +191,130 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                               const SizedBox(height: 24),
                               const Divider(color: _outlineVariant),
                               const SizedBox(height: 24),
+                              const _SectionHeader(title: 'Basic Information'),
+                              const SizedBox(height: 16),
+                              _TextInput(
+                                key: const Key('report_name'),
+                                controller: _name,
+                                label: 'Musolla Name',
+                                hint: 'e.g., Block B Musolla',
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 12),
+                              _TextInput(
+                                controller: _location,
+                                label: 'Location',
+                                hint: 'e.g., DKG 1, Block A',
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 12),
+                              _TextInput(
+                                controller: _exactLocation,
+                                label: 'Exact Location',
+                                hint: 'e.g., Level 2, near IBS Faculty',
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 16),
+                              _MapPickerPanel(
+                                latitude: _latitude.text,
+                                longitude: _longitude.text,
+                                onUseLocation: provider.loading
+                                    ? null
+                                    : _useCurrentLocation,
+                              ),
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<bool>(
+                                initialValue: _available,
+                                decoration: _inputDecoration('Current Status'),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: true,
+                                    child: Text('Available'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: false,
+                                    child: Text('Unavailable'),
+                                  ),
+                                ],
+                                onChanged: (value) => setState(
+                                  () => _available = value ?? _available,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              const Divider(color: _outlineVariant),
+                              const SizedBox(height: 24),
+                              const _SectionHeader(
+                                title: 'Facilities Available',
+                              ),
+                              const SizedBox(height: 16),
+                              _FacilityGrid(
+                                wudhu: _wudhu,
+                                toilet: _toilet,
+                                aircond: _aircond,
+                                prayerMats: _prayerMats,
+                                telekung: _telekung,
+                                onWudhu: (value) =>
+                                    setState(() => _wudhu = value),
+                                onToilet: (value) =>
+                                    setState(() => _toilet = value),
+                                onAircond: (value) =>
+                                    setState(() => _aircond = value),
+                                onPrayerMats: (value) =>
+                                    setState(() => _prayerMats = value),
+                                onTelekung: (value) =>
+                                    setState(() => _telekung = value),
+                              ),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: provider.loading ? null : _submit,
+                                  icon: provider.loading
+                                      ? const SizedBox.square(
+                                          dimension: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.send_outlined),
+                                  label: Text(_submitLabel),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: _primaryContainer,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                      horizontal: 24,
+                                    ),
+                                    shape: const StadiumBorder(),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (provider.error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    provider.error!,
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                  ),
+                                ),
                             ],
-                            const _SectionHeader(title: 'Basic Information'),
-                            const SizedBox(height: 16),
-                            _TextInput(
-                              key: const Key('report_name'),
-                              controller: _name,
-                              label: 'Musolla Name',
-                              hint: 'e.g., Block B Musolla',
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 12),
-                            _TextInput(
-                              controller: _location,
-                              label: 'Location',
-                              hint: 'e.g., DKG 1, Block A',
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 12),
-                            _TextInput(
-                              controller: _exactLocation,
-                              label: 'Exact Location',
-                              hint: 'e.g., Level 2, near IBS Faculty',
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 16),
-                            _MapPickerPanel(
-                              latitude: _latitude.text,
-                              longitude: _longitude.text,
-                              onUseLocation: provider.loading
-                                  ? null
-                                  : _useCurrentLocation,
-                            ),
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<bool>(
-                              initialValue: _available,
-                              decoration: _inputDecoration('Current Status'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: true,
-                                  child: Text('Available'),
-                                ),
-                                DropdownMenuItem(
-                                  value: false,
-                                  child: Text('Unavailable'),
-                                ),
-                              ],
-                              onChanged: (value) => setState(
-                                () => _available = value ?? _available,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            const Divider(color: _outlineVariant),
-                            const SizedBox(height: 24),
-                            const _SectionHeader(title: 'Facilities Available'),
-                            const SizedBox(height: 16),
-                            _FacilityGrid(
-                              wudhu: _wudhu,
-                              toilet: _toilet,
-                              aircond: _aircond,
-                              prayerMats: _prayerMats,
-                              telekung: _telekung,
-                              onWudhu: (value) =>
-                                  setState(() => _wudhu = value),
-                              onToilet: (value) =>
-                                  setState(() => _toilet = value),
-                              onAircond: (value) =>
-                                  setState(() => _aircond = value),
-                              onPrayerMats: (value) =>
-                                  setState(() => _prayerMats = value),
-                              onTelekung: (value) =>
-                                  setState(() => _telekung = value),
-                            ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                onPressed: provider.loading ? null : _submit,
-                                icon: provider.loading
-                                    ? const SizedBox.square(
-                                        dimension: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_outlined),
-                                label: Text(_submitLabel),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: _primaryContainer,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                    horizontal: 24,
-                                  ),
-                                  shape: const StadiumBorder(),
-                                  textStyle: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (provider.error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 12),
-                                child: Text(
-                                  provider.error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -350,18 +363,50 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       value == null || value.trim().isEmpty ? 'Required' : null;
 
   Future<void> _pickImages() async {
-    final picked = await _picker.pickMultiImage();
+    final source = await _showImageSourceSheet();
+    if (source == null) return;
     final availableSlots = 5 - _images.length;
     if (availableSlots <= 0) {
       if (mounted) showAppMessage(context, 'Maximum 5 images allowed');
       return;
     }
+    final picked = source == ImageSource.camera
+        ? [
+            if (await _picker.pickImage(source: ImageSource.camera)
+                case final image?)
+              image,
+          ]
+        : await _picker.pickMultiImage();
     if (picked.length > availableSlots) {
       if (mounted) showAppMessage(context, 'Maximum 5 images allowed');
     }
     setState(() {
       _images.addAll(picked.take(availableSlots));
     });
+  }
+
+  Future<ImageSource?> _showImageSourceSheet() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose From Gallery'),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _useCurrentLocation() async {
@@ -410,7 +455,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     };
     final provider = context.read<ReportProvider>();
     final ok = _isEdit
-        ? await provider.update(payload)
+        ? await provider.update(payload, _images)
         : await provider.create(payload, _images);
     if (!mounted) return;
     if (ok) {
@@ -716,6 +761,10 @@ class _MapPickerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lat = double.tryParse(latitude);
+    final lng = double.tryParse(longitude);
+    final hasPoint = lat != null && lng != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -738,17 +787,52 @@ class _MapPickerPanel extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
-              Positioned.fill(child: CustomPaint(painter: _MapGridPainter())),
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 28),
-                  child: Icon(
-                    Icons.location_on,
-                    size: 44,
-                    color: _ReportFormScreenState._primary,
+              Positioned.fill(
+                child: hasPoint
+                    ? FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(lat, lng),
+                          initialZoom: 17,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.none,
+                          ),
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.example.unimusolla_app',
+                            errorTileCallback: (_, __, ___) {},
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(lat, lng),
+                                width: 48,
+                                height: 48,
+                                child: const Icon(
+                                  Icons.location_pin,
+                                  size: 44,
+                                  color: _ReportFormScreenState._primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    : CustomPaint(painter: _MapGridPainter()),
+              ),
+              if (!hasPoint)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 28),
+                    child: Icon(
+                      Icons.location_on,
+                      size: 44,
+                      color: _ReportFormScreenState._primary,
+                    ),
                   ),
                 ),
-              ),
               Positioned(
                 right: 8,
                 top: 48,
@@ -775,7 +859,9 @@ class _MapPickerPanel extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'Use current location to pin the musolla on map',
+                      hasPoint
+                          ? 'Selected location pinned on map'
+                          : 'Use current location to pin the musolla on map',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: _ReportFormScreenState._onSurfaceVariant,
