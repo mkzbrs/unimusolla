@@ -50,19 +50,19 @@ class _SplashScreenState extends State<SplashScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.mosque,
+                Icons.explore,
                 size: 92,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 16),
               Text(
-                'UniMusolla',
+                'UniFinder',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text('Find campus prayer spaces faster'),
+              const Text('Your Campus, Easier to Explore'),
             ],
           ),
         ),
