@@ -50,7 +50,7 @@ class UniMusollaApp extends StatelessWidget {
     final router = AppRouter(auth).router;
 
     return MaterialApp.router(
-      title: 'UniMusolla',
+      title: 'UniFinder',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
